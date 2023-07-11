@@ -58,7 +58,7 @@ $$ x_{i+1} = x + \sigma_i \sqrt{(1-\alpha)^2 + \beta^2} \epsilon_{i+1} = x + \si
 This means that the noise level at the next iteration is $\sigma_{i+1} = \sigma_i \sqrt{(1-\alpha)^2 + \beta^2}$.  
 
 ### Model
-We use a UNet that is conditioned on the noise level. Noise conditioning is implemented by using a noise-level-dependent affine transformation applied to some of the feature maps. The exact method used in the notebook is a little unconventional, but
+We use a UNet that is conditioned on the noise level. Noise conditioning is implemented in two ways. First, we rescale the inputs $x \leftarrow x / \sqrt{1+\sigma}^2$ as the first operation in our network. Second, we use a noise-level-dependent affine transformation applied to some of the feature maps. The exact method used in the notebook is a little unconventional, but at a high level this works by:
 
 1. mapping the noise level $\sigma$ to a scalar between 0 and 1 via $\gamma = \sigma / \sqrt{1+\sigma^2}$
 2. apply a random sinusoidal embedding of this recaled noise level: $\mathbf{q} = sin(\mathbf{w} \gamma)$ where $\mathbf{w}$ is a random weight vector that is fixed during training.
@@ -67,37 +67,5 @@ We use a UNet that is conditioned on the noise level. Noise conditioning is impl
 
 I'm also using GroupNorm to normalize the net, which is concerning as the network is unable to *see* and therefore denoise the DC component of input images. For these simple MNIST digits, its ok to ignore this point but its worth considering.
 
-<!---
-## What are the diffusion-specific hyperparameters?
-1. Distribution of noise levels we train on.
-2. Noise levels during generation.
-3. Noise reinjection during generation
-
-For an insightful, albeit quite technical, discussion of hyperparameters in diffusion models see [this NVIDIA paper](https://arxiv.org/abs/2206.00364).
-
-## Intuitively, how does this work?
-The common explanations for diffusion rely on some pretty technical probabilistic explanations. There are enough of these explanation in the literature so I'll refer you to other sources. I'll provide a higher level description here The main loop of our generation code has two main ingredients: subtracting a small amount of predicted noise and adding back in a small amount of noise. 
-$$ x \leftarrow x - \overbrace{\alpha \sigma \hat\epsilon_\theta(x, \sigma)}^{\text{subtract predicted noise}} + \overbrace{\beta \sigma z}^{\text{inject new noise}}$$
-Note that many models use a third ingredient: slightly rescaling the partially generated image at each step (Alg. 2 of DDPM) but we don't here.
-
-### Small noise subtraction 
-The first ingredient is to subtract a small amount of predicted noise from our partially generated image. In short, we're denoising noise. This is akin to "seeing images in the clouds". There is a technical point here: why don't we subtract a large amount of noise? This would seem preferable as it would reduce the number of steps required to generate an image.
-
-I think [John Whitaker](https://colab.research.google.com/github/huggingface/diffusion-models-class/blob/main/unit1/02_diffusion_models_from_scratch.ipynb) provides a nice visualization that answers this question, which I'll summarize here. Suppose you had a noisy image and you did remove a large amount of noise. Well the best the network can do is give you a blurry denoised image, since its trained with a mean squared error objective.
-
-Taking small steps helps to ensure you never end up with these blurred images.
-
-### Noise reinjection
-I personally find this term to be one of the most surprising ingredients of diffusion models. This noise reinjection is standard practice in diffusion models and you find it in both the original DDPM and score matching papers.
-
-If we are using our denoiser to subtract noise, why would we ever add back in noise? Empirically it at least improves our sample quality. Try setting $\beta=0$ in our generation code and observe what happens. You'll find pretty good sample diversity, but generally they are lower quality or sometimes noisy generations than the ones we see when we inject noise. The amount of added stochasticity was studied
-
-"Because it helps" is not a very satisfying explanation. Is there a deeper probabilistic explanation? Unfortunately the answer is no with an asterisc. It is true that the noise injection term does fall out of the DDPM model, and is a core ingredient of Langevin dynamics, so in that sense it is described by probabilistic theory. But as pointed out by NVIDIA, eliminating the noise reinjection term (which they call *churn*) gives rise to a probability flow ODE: in other words, you still end up with samples from $P(x)$ in our generation code assuming $\alpha$ is small enough and our denoiser is good enough. The fact that our samples don't look as good when we turn off the noise injection ($\beta=0$) suggests either a failing in our denoiser or our steps are too big. 
-
-Why might noise reinjection be a good thing? Here is where I'll speculate. Let's consider the case that you did take a large step. The denoised patterns look...off. In particular they're blurry, (as expected since our denoiser is trained with mean squared error)
-
-If we fed these back into our network, what would happen? Well I don't know, its never been trained on images that look like this before. But if we add back in noise, then at least these seem to look similar to images the net has seen before.
-
-Perhaps the noise reinjection is a way to ensure the inputs to the net at each step look like training data. Again, I'm speculating here, and I've used a lot of vague language here, e.g. the inputs *seemed* to look similar. Further investigation is needed but I just can't ignore this point as I think noise reinjection is such a confusing aspect of diffusion models.
-
-<!-- **Where is the diffusion?** In the famous DDPM paper, . Here we have no ushc model. Often associated with probabilities, and stricted defition. In practice it seems like anything that iteratitvely turns noise into images is called diffusion. -->
+## Evaluation
+Ultimately I'm just eyeballing the generations and picking parameters ($\sigma_{\text{min}}, $\sigma_{\text{max}}, $\alpha$, $\beta$) which give nice-looking generations. To push this forward, we'd really want to use a quantitative evaluation metric. A common metric is FID (Fréchet inception distance) which is a method to compare the distribution of generated digits with some held-out set of real digits. It works by computing features with a pre-trained classifier and then comparing covariance matrices of these features for the real and generated digits. 
