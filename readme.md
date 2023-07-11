@@ -67,5 +67,5 @@ We use a UNet that is conditioned on the noise level. Noise conditioning is impl
 
 I'm also using GroupNorm to normalize the net, which is concerning as the network is unable to *see* and therefore denoise the DC component of input images. For these simple MNIST digits, its ok to ignore this point but its worth considering.
 
-## Evaluation
+### Evaluation
 Ultimately I'm just eyeballing the generations and picking parameters ($\sigma_{\text{min}}, $\sigma_{\text{max}}, $\alpha$, $\beta$) which give nice-looking generations. To push this forward, we'd really want to use a quantitative evaluation metric. A common metric is FID (Fréchet inception distance) which is a method to compare the distribution of generated digits with some held-out set of real digits. It works by computing features with a pre-trained classifier and then comparing covariance matrices of these features for the real and generated digits. 
