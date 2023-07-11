@@ -1,7 +1,7 @@
 # A simple diffusion model in PyTorch
-Here is an unconditional diffusion model from scratch using PyTorch. For building my own intuition, I wanted to see a simple working example without too many nested variables or too much abstraction. This model isn't state of the art and isn't an exact implementation of any existing diffusion model, but it could be useful for building intuition.
+Here is an unconditional diffusion model from scratch using PyTorch. For building my own intuition, I wanted to see a simple working example without too many nested variables or too much abstraction.
 
-It follows the the general framework set out by this insightful but technical NVIDIA paper [Elucidating the Design Space of Diffusion-Based Generative Models](https://arxiv.org/abs/2206.00364). Specifically there is no coupling between training and generation noise distributions. To demonstrate the simplicity, here is the generation code:
+This model isn't state of the art and isn't an exact implementation of any existing diffusion model, but it loosely follows the the general framework set out by this insightful but technical NVIDIA paper [Elucidating the Design Space of Diffusion-Based Generative Models](https://arxiv.org/abs/2206.00364). Specifically there is no coupling between training and generation noise distributions. To demonstrate the simplicity, here is the generation code:
 ```python
 @torch.no_grad()
 def generate_samples(model, sigma=100.0, sigma_min=0.03, alpha=0.1, beta=.40, device='cuda'):
