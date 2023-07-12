@@ -1,7 +1,9 @@
 # A simple diffusion model in PyTorch
 I create a [Colab notebook](https://colab.research.google.com/github/KyleLuther/SimplifiedDiffusion/blob/main/SimplifiedDiffusion.ipynb) which implements an unconditional diffusion model from scratch using PyTorch. For building my own intuition, I wanted a simple working example without too many nested variables or too much abstraction.
 
-This model isn't state of the art and isn't an exact implementation of any existing diffusion model, but it loosely follows the framework set out by this insightful but technical [NVIDIA paper](https://arxiv.org/abs/2206.00364). Specifically there is no coupling between training and generation noise distributions. To demonstrate the simplicity, here is the generation code:
+:warning: This model isn't state of the art and isn't an exact implementation of any existing diffusion model. There are so many different variants in the literature, but I really just wanted something simple that let's me more easily see what is going on. This model at least loosely follows the framework set out by this insightful but technical [NVIDIA paper](https://arxiv.org/abs/2206.00364). Specifically there is no coupling between training and generation noise distributions.
+
+To demonstrate the simplicity, here is the generation code:
 ```python
 @torch.no_grad()
 def generate_samples(model, sigma=100.0, sigma_min=0.03, alpha=0.1, beta=.40, device='cuda'):
@@ -60,7 +62,9 @@ $$ x_{i+1} = x + \sigma_i \sqrt{(1-\alpha)^2 + \beta^2} \epsilon_{i+1} = x + \si
 This means that the noise level at the next iteration is $\sigma_{i+1} = \sigma_i \sqrt{(1-\alpha)^2 + \beta^2}$.  
 
 ### Model
-We use a UNet that is conditioned on the noise level. Noise conditioning is implemented in two ways. First, we rescale the inputs $x \leftarrow x / \sqrt{1+\sigma}^2$ as the first operation in our network. Second, we use a noise-level-dependent affine transformation applied to some of the feature maps. The exact method used in the notebook is a little unconventional, but at a high level this works by:
+We use a UNet that is conditioned on the noise level. Note that for this setting with a tiny net + MNIST, noise conditioning is really not very important (and even for more complicated images like CIFAR you can get away without noise conditioning as done [here](https://arxiv.org/abs/2006.09011)), but I wanted to include it here because it is so common in modern diffusion models.
+
+Noise conditioning is implemented here in two ways. First, we rescale the inputs $x \leftarrow x / \sqrt{1+\sigma}^2$ as the first operation in our network. Second, we use a noise-level-dependent affine transformation applied to some of the feature maps. The exact method used in the notebook is a little unconventional, but at a high level this works by:
 
 1. mapping the noise level $\sigma$ to a scalar between 0 and 1 via $\gamma = \sigma / \sqrt{1+\sigma^2}$
 2. apply a random sinusoidal embedding of this recaled noise level: $\mathbf{q} = sin(\mathbf{w} \gamma)$ where $\mathbf{w}$ is a random weight vector that is fixed during training.
@@ -68,8 +72,6 @@ We use a UNet that is conditioned on the noise level. Noise conditioning is impl
 4. apply this affine transform to feature maps: $\hat{x}^l_{b,i,u} = s^l_i x^l_{b,i,u} + b^l_i$ where $b,i,u$ are batch, channel, space indices
 
 I'm also using GroupNorm to normalize the net, which is concerning as the network is unable to *see* and therefore denoise the DC component of input images. For these simple MNIST digits, its ok to ignore this point but its worth considering.
-
-I use an exponential moving average applied to the weights as is common, since this can really help with generation quality, even when the 
 
 ### Evaluation
 Ultimately I'm just eyeballing the generations and picking parameters ($\sigma_{\text{min}}$, $\sigma_{\text{max}}$, $\alpha$, $\beta$) which give nice-looking generations. To push this forward, we'd really want to use a quantitative evaluation metric like FID (Fréchet inception distance).
