@@ -62,7 +62,7 @@ $$ x_{i+1} = x + \sigma_i \sqrt{(1-\alpha)^2 + \beta^2} \epsilon_{i+1} = x + \si
 This means that the noise level at the next iteration is $\sigma_{i+1} = \sigma_i \sqrt{(1-\alpha)^2 + \beta^2}$.  
 
 ### Model
-We use a UNet that is conditioned on the noise level. Note that for this setting with a tiny net + MNIST, noise conditioning is really not very important (and even for more complicated images like CIFAR you can get away without noise conditioning as done [here](https://arxiv.org/abs/2006.09011)), but I wanted to include it here because it is so common in modern diffusion models.
+We use a UNet that is conditioned on the noise level. Note that for this setting with a tiny net + MNIST, noise conditioning is really not very important (and even for more complicated images like CIFAR you can get away without noise conditioning as done [here](https://arxiv.org/abs/2006.09011)), but I wanted to include it here because using some form of noise conditioning is so common in modern diffusion models.
 
 Noise conditioning is implemented here in two ways. First, we rescale the inputs $x \leftarrow x / \sqrt{1+\sigma}^2$ as the first operation in our network. Second, we use a noise-level-dependent affine transformation applied to some of the feature maps. The exact method used in the notebook is a little unconventional, but at a high level this works by:
 
