@@ -1,5 +1,5 @@
 # A simple diffusion model in PyTorch
-I create a [Colab notebook](https://colab.research.google.com/github/KyleLuther/SimplifiedDiffusion/blob/main/SimplifiedDiffusion.ipynb) which implements an unconditional diffusion model from scratch using PyTorch. For building my own intuition, I wanted a simple working example without too many nested variables or too much abstraction.
+I created a [Colab notebook](https://colab.research.google.com/github/KyleLuther/SimplifiedDiffusion/blob/main/SimplifiedDiffusion.ipynb) which implements an unconditional diffusion model from scratch using PyTorch. For building my own intuition, I wanted a simple working example without too many nested variables or too much abstraction.
 
 :warning: This model isn't state of the art and isn't an exact implementation of any existing diffusion model. There are so many different variants in the literature, but I really just wanted something simple that let's me more easily see what is going on. This model at least loosely follows the framework set out by this insightful but technical [NVIDIA paper](https://arxiv.org/abs/2206.00364). Specifically there is no coupling between training and generation noise distributions.
 
