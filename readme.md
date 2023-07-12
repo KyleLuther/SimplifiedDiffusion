@@ -1,7 +1,7 @@
 # A simple diffusion model in PyTorch
-Here is a [Colab notebook](https://colab.research.google.com/github/KyleLuther/SimplifiedDiffusion/blob/main/SimplifiedDiffusion.ipynb) which implements an unconditional diffusion model from scratch using PyTorch. For building my own intuition, I wanted to see a simple working example without too many nested variables or too much abstraction.
+I create a [Colab notebook](https://colab.research.google.com/github/KyleLuther/SimplifiedDiffusion/blob/main/SimplifiedDiffusion.ipynb) which implements an unconditional diffusion model from scratch using PyTorch. For building my own intuition, I wanted a simple working example without too many nested variables or too much abstraction.
 
-This model isn't state of the art and isn't an exact implementation of any existing diffusion model, but it loosely follows the the general framework set out by this insightful but technical NVIDIA paper [Elucidating the Design Space of Diffusion-Based Generative Models](https://arxiv.org/abs/2206.00364). Specifically there is no coupling between training and generation noise distributions. To demonstrate the simplicity, here is the generation code:
+This model isn't state of the art and isn't an exact implementation of any existing diffusion model, but it loosely follows the framework set out by this insightful but technical [NVIDIA paper](https://arxiv.org/abs/2206.00364). Specifically there is no coupling between training and generation noise distributions. To demonstrate the simplicity, here is the generation code:
 ```python
 @torch.no_grad()
 def generate_samples(model, sigma=100.0, sigma_min=0.03, alpha=0.1, beta=.40, device='cuda'):
@@ -14,11 +14,11 @@ def generate_samples(model, sigma=100.0, sigma_min=0.03, alpha=0.1, beta=.40, de
 
     return torch.stack(xs) # (nsteps, batch, channels, height, width)
 ```
-We start with an image of pure noise, then iteratively subtract some fraction of the predicted noise at each step, and add back in some new noise. In our code, the amount of subtraction and reinjection is controlled by the hyperparameters $\alpha$ and $\beta$ respectively. This subtraction/reinjection leads to a noise level which decays exponentially (see below for explanation). Here are some generations after 50 epochs (45 minutes on Colab) of training on padded MNIST digits:
+`sigma * model(x,sigma)` returns the predicted noise content of the partially generated image. So what is going on in this code is that we subtract some fraction `alpha` of the predicted noise, then reinject some amout of new noise `beta * sigma * torch.randn_like(x)`. Repeatedly performing this combination of noise subtraction/injection causes images to emerge from pure noise. Here are some generations after 50 epochs (45 minutes on Colab) of training on padded MNIST digits:
 
 <img src="generated.png"  height="200" />
 
-Most of the specifics are in the code itself, but I'll give an overview below.
+Probabilistic theories and interpretations of diffusion have been covered other places but are pretty technical (two complementary blogs are [here](https://yang-song.net/blog/2021/score/) and [here](https://lilianweng.github.io/posts/2021-07-11-diffusion-models/)) and as explained in the [NVIDIA paper](https://arxiv.org/abs/2206.00364) they leave a lot of unanswered questions about how to set most of the parameters. Therefore I'll just focus on the specifics of the code here.
 
 ## Overview
 
@@ -42,6 +42,8 @@ where $z_i$ is a random unit Gaussian vector. We're subtracting some fraction of
 
 $\alpha$ and $\beta$ are hyperparameters. They should be chosen so that $\sqrt{(1-\alpha)^2 + \beta^2}<1$ (ie so that $\sigma$ decays with each step). Commonly, you'll see diffusion models define some set of noise levels and derive dynamics from the noise levels, here we define dynamics and then infer the noise levels. 
 
+Why am I using fixed $\alpha$ and $\beta$? Because it's simpler than using variable $\alpha$ and $\beta$. That's all. You might be able to improve things by getting fancier but that's outside the scope of this model.
+
 #### Why is the noise decaying exponentially?
 Our denoiser requires the noise level as input so we need to be able to at least estimate the noise level $\sigma$ during generation. In full generality, this is actually pretty tricky without the probabilistic framework of DDPM, Langevin dynamics, etc. But there is a simple non-rigorous way to estimate $\sigma$ here using the argument proposed in [Kadkhodaie and Simoncelli](https://arxiv.org/pdf/2007.13640). First suppose at iteration $i$ we have a pattern which is the sum of a single image and Gaussian noise with known noise level $\sigma_i$.
 
@@ -63,9 +65,13 @@ We use a UNet that is conditioned on the noise level. Noise conditioning is impl
 1. mapping the noise level $\sigma$ to a scalar between 0 and 1 via $\gamma = \sigma / \sqrt{1+\sigma^2}$
 2. apply a random sinusoidal embedding of this recaled noise level: $\mathbf{q} = sin(\mathbf{w} \gamma)$ where $\mathbf{w}$ is a random weight vector that is fixed during training.
 3. compute a per-layer affine transform: $\mathbf{s}^l = \mathbf{W}_s^l \mathbf{q}$ and $\mathbf{b}^l = \mathbf{W}_b^l \mathbf{q}$
-4. apply this affine transform to feature maps: $x^l_{b,i,u} = s^l_i x^l_{b,i,u} + b^l_i$ where $b,i,u$ are batch, channel, space indices
+4. apply this affine transform to feature maps: $\hat{x}^l_{b,i,u} = s^l_i x^l_{b,i,u} + b^l_i$ where $b,i,u$ are batch, channel, space indices
 
 I'm also using GroupNorm to normalize the net, which is concerning as the network is unable to *see* and therefore denoise the DC component of input images. For these simple MNIST digits, its ok to ignore this point but its worth considering.
 
+I use an exponential moving average applied to the weights as is common, since this can really help with generation quality, even when the 
+
 ### Evaluation
-Ultimately I'm just eyeballing the generations and picking parameters ($\sigma_{\text{min}}, $\sigma_{\text{max}}, $\alpha$, $\beta$) which give nice-looking generations. To push this forward, we'd really want to use a quantitative evaluation metric. A common metric is FID (Fréchet inception distance) which is a method to compare the distribution of generated digits with some held-out set of real digits. It works by computing features with a pre-trained classifier and then comparing covariance matrices of these features for the real and generated digits. 
+Ultimately I'm just eyeballing the generations and picking parameters ($\sigma_{\text{min}}$, $\sigma_{\text{max}}$, $\alpha$, $\beta$) which give nice-looking generations. To push this forward, we'd really want to use a quantitative evaluation metric like FID (Fréchet inception distance).
+
+
