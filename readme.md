@@ -18,7 +18,7 @@ def generate_samples(model, sigma=100.0, sigma_min=0.03, alpha=0.1, beta=.40, de
 
 <img src="generated.png"  height="200" />
 
-Probabilistic theories and interpretations of diffusion have been covered other places but are pretty technical (two complementary blogs are [here](https://yang-song.net/blog/2021/score/) and [here](https://lilianweng.github.io/posts/2021-07-11-diffusion-models/)) and as explained in the [NVIDIA paper](https://arxiv.org/abs/2206.00364) they leave a lot of unanswered questions about how to set most of the parameters. Therefore I'll just focus on the specifics of the code here.
+Probabilistic theories and interpretations of diffusion have been covered other places but are pretty technical (two complementary blogs are [here](https://yang-song.net/blog/2021/score/) and [here](https://lilianweng.github.io/posts/2021-07-11-diffusion-models/)) so I'll just focus on the specifics of the code here.
 
 ## Overview
 
